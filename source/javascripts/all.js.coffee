@@ -73,15 +73,36 @@ class AirSpin.Track
     @gainNode.connect(@context.destination)
 
   setBuffer: (buffer) ->
-    createSource = =>
-      source = @context.createBufferSource()
-      source.buffer = buffer
-      source.loop = true
-      source
-
     @source?.disconnect()
-    @source = createSource()
-    @source.connect(@gain)
+    delete @source
+    delete @startTime
+    delete @stopTime
+    @buffer = buffer
+
+  togglePlay: ->
+    if @startTime && !@stopTime
+      @pause()
+    else
+      @play()
+
+  play: ->
+    debugger
+    @source = @createSource()
+    offset = if @stopTime && @startTime
+      @stopTime - @startTime
+    @source.start(0, offset || 0)
+    @startTime = @context.currentTime
+
+  createSource: ->
+    source = @context.createBufferSource()
+    source.buffer = @buffer
+    source.loop = true
+    source
+
+  pause: ->
+    @stopTime = @context.currentTime
+    @source.stop(0)
+
 
 class AirSpin.BufferLoader
   constructor: (@context, @urlList, @onload) ->
