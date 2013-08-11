@@ -23,11 +23,20 @@ window.AirSpin =
           max = 200
 
           val = x + (max / 2)
-          val = Math.min(max, val)
-          val = Math.max(0, val)
+          return if val > max || val < 0
 
-          console.log "crossfadin'", val, max
-          # CrossfadeSample.crossfade({value: val, max: max});
+          value = val / max
+          $('#crossfader').val(val)
+          @crossfade(value)
+
+      handleEvent: (value, max) ->
+        x = parseInt(value) / parseInt(max);
+        @crossfade(x)
+
+      crossfade: (value) ->
+        # update UI
+        AirSpin.left.gainNode.gain.value = Math.cos(value * 0.5*Math.PI)
+        AirSpin.right.gainNode.gain.value = Math.cos((1.0 - value) * 0.5*Math.PI)
 
     trackOne: {}
     trackTwo: {}
@@ -45,17 +54,23 @@ window.AirSpin =
   load: (urlList) ->
     bufferLoader = new AirSpin.BufferLoader @context, urlList, (buffers) =>
       @buffers = @buffers.concat(buffers)
-      console.log @buffers
+
       @left.setBuffer(@buffers[0])
       @right.setBuffer(@buffers[1])
+
+      @left.gainNode.gain.value = 1
+      @right.gainNode.gain.value = 0
+
+      @left.play()
+      @right.play()
     bufferLoader.load()
 
 
 class AirSpin.Track
   constructor: ->
     @context = AirSpin.context
-    @gain = @context.createGain()
-    @gain.connect(@context.destination)
+    @gainNode = @context.createGain()
+    @gainNode.connect(@context.destination)
 
   setBuffer: (buffer) ->
     createSource = =>
@@ -106,6 +121,12 @@ class AirSpin.BufferLoader
 
 $ ->
   AirSpin.init()
+
+  $('#crossfader').on 'change', ->
+    AirSpin.modes.crossFader.handleEvent?($(this).val(), this.max)
+
+  $('#left-play').on 'click', ->
+    AirSpin.left.togglePlay()
 
   AirSpin.load ['../audio/polish_girl.m4a', '../audio/true_loves.m4a']
 
