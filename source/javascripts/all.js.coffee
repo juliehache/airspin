@@ -17,26 +17,38 @@ window.AirSpin =
   modes:
     crossFader:
       handleFrame: (frame) ->
-        if frame.hands.length > 0
-          hand = frame.hands[0]
-          x = hand.palmPosition[0]
-          max = 200
+        for hand in frame.hands
+          if hand.palmPosition[0] < 100 && hand.palmPosition[0] > -100
+            x = hand.palmPosition[0]
+            max = 200
 
-          val = x + (max / 2)
-          return if val > max || val < 0
+            val = x + (max / 2)
+            return if val > max || val < 0
 
-          value = val / max
-          $('#crossfader').val(val)
-          @crossfade(value)
+            value = val / max
+            $('#crossfader').val(val)
+            @crossfade(value)
+          else if hand.palmPosition[0] < -150
+            @playbackRate(AirSpin.left, hand.palmPosition)
+          else if hand.palmPosition[0] > 150
+            @playbackRate(AirSpin.right, hand.palmPosition)
+
 
       handleEvent: (value, max) ->
         x = parseInt(value) / parseInt(max);
         @crossfade(x)
 
       crossfade: (value) ->
-        # update UI
         AirSpin.left.gainNode.gain.value = Math.cos(value * 0.5*Math.PI)
         AirSpin.right.gainNode.gain.value = Math.cos((1.0 - value) * 0.5*Math.PI)
+
+      playbackRate: (track, values) ->
+        return if values[1] < 200
+        y = values[1] - 200
+
+        rate = y /100
+        track.source.playbackRate.value = rate
+
 
     trackOne: {}
     trackTwo: {}
@@ -175,7 +187,11 @@ $ ->
   AirSpin.leap.on 'deviceDisconnected', ->
     console.log "A Leap device has been disconnected."
 
+  positionInputs = (document.getElementById(id) for id in ["leap-x", "leap-y", "leap-z"])
   AirSpin.leap.on 'frame', (frame) ->
+    if frame.hands.length > 0
+      for n, i in frame.hands[0].palmPosition
+        positionInputs[i].value = parseInt(n)
     AirSpin.currentMode().handleFrame?(frame)
 
   AirSpin.leap.connect();
