@@ -80,28 +80,40 @@ class AirSpin.Track
     @buffer = buffer
 
   togglePlay: ->
-    if @startTime && !@stopTime
+    if @isPlaying()
       @pause()
     else
       @play()
 
   play: ->
-    debugger
+    # return if @isPlaying()
+    @source?.disconnect()
+    delete @source
+
     @source = @createSource()
-    offset = if @stopTime && @startTime
-      @stopTime - @startTime
-    @source.start(0, offset || 0)
-    @startTime = @context.currentTime
+    @source.start(0, @playOffset())
+    @startTime = @context.currentTime - @playOffset()
+    delete @stopTime
 
   createSource: ->
     source = @context.createBufferSource()
     source.buffer = @buffer
     source.loop = true
+    source.connect(@gainNode)
     source
 
   pause: ->
     @stopTime = @context.currentTime
     @source.stop(0)
+
+  isPlaying: ->
+    @startTime && !@stopTime
+
+  playOffset: ->
+    if @stopTime && @startTime
+      @stopTime - @startTime
+    else
+      0
 
 
 class AirSpin.BufferLoader
@@ -148,6 +160,9 @@ $ ->
 
   $('#left-play').on 'click', ->
     AirSpin.left.togglePlay()
+
+  $('#right-play').on 'click', ->
+    AirSpin.right.togglePlay()
 
   AirSpin.load ['../audio/polish_girl.m4a', '../audio/true_loves.m4a']
 
