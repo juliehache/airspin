@@ -3,6 +3,7 @@
 #= require mousetrap
 #= require_self
 
+
 window.AirSpin =
   init: ->
     window.AudioContext = window.AudioContext || window.webkitAudioContext
@@ -14,40 +15,60 @@ window.AirSpin =
 
     @leap = new Leap.Controller()
 
+    @crossfaderWrapper = document.getElementById("crossfader-wrapper")
+
   modes:
     crossFader:
       handleFrame: (frame) ->
+        $('#crossfader').val(@value * 200) if @value
+        if AirSpin.left?.source
+          rate = AirSpin.left.source.playbackRate.value
+          $('#left-playbackrate').html(Math.round(rate * 100) / 100).css("background", "")
+        if AirSpin.right?.source
+          rate = AirSpin.right.source.playbackRate.value
+          $('#right-playbackrate').html(Math.round(rate * 100) / 100).css("background", "")
+        AirSpin.crossfaderWrapper.style.background = ''
         for hand in frame.hands
           if hand.palmPosition[0] < 100 && hand.palmPosition[0] > -100
-            x = hand.palmPosition[0]
-            max = 200
-
-            val = x + (max / 2)
-            return if val > max || val < 0
-
-            value = val / max
-            $('#crossfader').val(val)
-            @crossfade(value)
+            @leapCrossfade(hand.palmPosition)
           else if hand.palmPosition[0] < -150
-            @playbackRate(AirSpin.left, hand.palmPosition)
+            @playbackRate("left", hand.palmPosition)
           else if hand.palmPosition[0] > 150
-            @playbackRate(AirSpin.right, hand.palmPosition)
+            @playbackRate("right", hand.palmPosition)
 
+      leapCrossfade: (values) ->
+        x = values[0]
+        max = 200
+
+        val = x + (max / 2)
+
+        return if val > max || val < 0
+        $('#crossfader').val(val)
+        return if values[2] > 50
+        AirSpin.crossfaderWrapper.style.background = 'green'
+        value = val / max
+        @crossfade(value)
 
       handleEvent: (value, max) ->
         x = parseInt(value) / parseInt(max);
         @crossfade(x)
 
       crossfade: (value) ->
+        @value = value
         AirSpin.left.gainNode.gain.value = Math.cos(value * 0.5*Math.PI)
         AirSpin.right.gainNode.gain.value = Math.cos((1.0 - value) * 0.5*Math.PI)
 
-      playbackRate: (track, values) ->
+      playbackRate: (trackName, values) ->
+        track = AirSpin[trackName]
         return if values[1] < 200
         y = values[1] - 200
 
         rate = y /100
-        track.source.playbackRate.value = rate
+        $("##{trackName}-playbackrate").html(Math.round(rate * 100) / 100)
+        return if values[2] > 50
+        $("##{trackName}-playbackrate").css("background", "green")
+        if track.source
+          track.source.playbackRate.value = rate
 
 
     trackOne: {}
